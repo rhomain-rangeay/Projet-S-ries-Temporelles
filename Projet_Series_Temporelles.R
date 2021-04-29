@@ -12,6 +12,7 @@ setwd("/Users/Romain/Documents/Romain/ENSAE 2A 2020-2021/S2/Séries temporelles
 getwd()
 datafile <- "valeurs_mensuelles.csv"
 data <- read.csv(datafile, sep=";")
+
 data
 
 # Packages séries temporelles
