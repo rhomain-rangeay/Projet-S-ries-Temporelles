@@ -8,7 +8,12 @@
 
 
 # Importation des données
-setwd("/Users/Romain/Documents/Romain/ENSAE 2A 2020-2021/S2/Series temporelles/Projet de series temporelles")
+
+# Path Romain
+setwd1("/Users/Romain/Documents/Romain/ENSAE 2A 2020-2021/S2/Series temporelles/Projet de series temporelles")
+# Path Maxime
+setwd2("")
+
 getwd()
 datafile <- "valeurs_mensuelles.csv"
 data <- read.csv(datafile, sep=";")
