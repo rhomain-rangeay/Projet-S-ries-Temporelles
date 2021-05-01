@@ -42,12 +42,8 @@ par(mfrow = c(1,2))
 plot(X_t, xlab = "Années", ylab = "Indice brut de la production industrielle") 
 acf(X_t, main = "")
 
-# plot du logarithme de la série
-W_t = log(X_t)
-plot(W_t, xlab = "Années", ylab = "Logarithme de l'indice") 
-acf(W_t, main = "")
-
-
+######## QUESTION A ECLAIRCIR #######
+# lien heteroscédasticité autocorrélogramme ? Notre série est-elle heteroscedastique ?
 
 ######
 # Q2 #
@@ -56,20 +52,26 @@ acf(W_t, main = "")
 
 # correction de la tendance
 
-lt <- lm(W_t ~ dates) # régression du log de la série sur les dates
+lt <- lm(X_t ~ dates) # régression du log de la série sur les dates
 summary(lt)
-dates
 
 # résidus de la régression du logarithme de la série sur les dates
 # série corigée
 Z_t <- lt$residuals
 acf(Z_t, main = ""); pacf(Z_t, main = "")
 
+##### A FAIRE ######
+# Il faudrait l'ACF et le PACF de Diff
+acf(diff_X_t, main = ""); pacf(diff_X_t, main = "")
+# Au regard des graphiques, on a l'intuition que la série est différenciée semble stationnaire. On va vérifier cette supposition avec des tests.
+
+
 # Test racine unitaire sur le logarithme de la série
 # Test de Dickey-Fuller
-adf <- adfTest(W_t, lag=0, type="ct")
+adf <- adfTest(X_t, lag=0, type="ct")
 adf
-# function test d'auto-corrélation
+
+# fonction test d'auto-corrélation
 Qtests <- function(series, k, fitdf=0) {
   pvals <- apply(matrix(1:k), 1, FUN=function(l) {
     pval <- if (l<=fitdf) NA else Box.test(series, lag=l, type="Ljung-Box", fitdf=fitdf)$p.value
@@ -81,7 +83,7 @@ Qtests <- function(series, k, fitdf=0) {
 Qtests(adf@test$lm$residuals, 24,length(adf@test$lm$coefficients))
 
 # L’absence d’autocorrélation des résidus est rejetéee au moins une fois (Q(4) à Q(9)), le test ADF avec aucun retard n’est donc pas valide. 
-# Ajoutons des retards de ∆Xt jusqu’à ce que les résidus ne soient plus autocorrélée.
+# Ajoutons des retards de ∆Xt jusqu’à ce que les résidus ne soient plus autocorrélés.
 adfTest_valid <- function(series,kmax,type){
   k <- 0
   noautocorr <- 0
@@ -96,26 +98,31 @@ adfTest_valid <- function(series,kmax,type){
   return(adf)
   }
 # Puis    
-adf <- adfTest_valid(W_t,24,"ct")
-# Il a fallu considérer 9 retards au test ADF pour supprimer l’autocorrélation des résidus.
+adf <- adfTest_valid(X_t,24,"ct")
+# Il a fallu considérer 8 retards au test ADF pour supprimer l’autocorrélation des résidus.
 adf
 
-dspread <- diff(W_t,1)
-plot(dspread)
+# La racine unitaire n’est pas rejetée à un seuil de 95% pour la série en niveau, la série est donc au moins I(1) (intégrée d'ordre 1). 
 
-adf <- adfTest_valid(dspread,24, type="nc")
-# Il n’a pas été nécessaire d’inclure des retards dans le test ADF (test DF simple).
+# Testons maintenant la racine unitaire pour la série différenciée dspread. 
+diff_X_t <- diff(X_t,1)
+plot(diff_X_t)
+# La représentation graphique précédente semble montrer l’absence de constante et de tendance non nulle. Vérifions avec une régression :
+summary(lm(diff_X_t ~ dates[-1])) #sans la première date car on a différencié la série
+
+# La p-valeur est largement supérieure à 0.05.
+# donc on ne rejette pas le test de nullité du coefficient associé à dates dans la régression de la série différenciée sur les dates
+# CONCLUSION : Il y a bien ni constante ni tendance significative.
+
+adf <- adfTest_valid(diff_X_t,24, type="nc")
+# On ajoute 7 retards dans le test ADF (test DF simple).
 adf
 
-
-x <- dspread
-par(mfrow=c(1,2))
-acf(x);pacf(x)
-
-
+# Le test rejette la racine unitaire (p-value<0.05), on dira donc que la série différenciée est ”stationnaire”. 
+# diff_X_t est donc I(1).
 
 # Test de Phillips-Perron
-pp.test(W_t)
+pp.test(diff_X_t)
 
 
 ######
@@ -124,7 +131,34 @@ pp.test(W_t)
 
 
 # plots avant et après la transformation de la série
-plot(X_t, xlab = "Années", ylab = expression(X[t])) ; plot(Z_t, xlab = "Années", ylab = expression(Z[t]))
+par(mfrow = c(1,2))
+plot(X_t, xlab = "Années", ylab = expression(X[t])) ; plot(diff_X_t, xlab = "Années", ylab = expression(Delta*X[t]))
+
+#####
+# Q4 follasse #
+#####
+mat <- matrix(NA,nrow=19+1,ncol=3+1) #matrice vide à remplir
+rownames(mat) <- paste0("p=",0:19) #renomme les lignes
+colnames(mat) <- paste0("q=",0:3) #renomme les colonnes
+AICs <- mat #matrice des AIC non remplie
+BICs <- mat #matrice des BIC non remplie
+pqs <- expand.grid(0:19,0:3) #toutes les combinaisons possibles de p et q
+  for (row in 1:dim(pqs)[1]){ #boucle pour chaque (p,q)
+    p <- pqs[row,1] # récupère p
+    q <- pqs[row,2] # récupère q
+    estim <- try(arima(diff_X_t,c(p,0,q),include.mean = F)) #tente d’estimer l’ARIMA 
+    AICs[p+1,q+1] <- if (class(estim)=="try-error") NA else estim$aic #assigne l’AIC 
+    BICs[p+1,q+1] <- if (class(estim)=="try-error") NA else BIC(estim) #assigne le BIC
+}
+
+AICs==min(AICs) #affiche le modèle minimisant l’AIC
+AICs
+#L'ARIMA (7,1,2) minimise l'AIC
+
+BICs==min(BICs) #affiche le modèle minimisant le BIC
+BICs #affiche les BICs
+#L'ARIMA (0,1,1) minimise l'AIC
+
 
 ######
 # Q4 #
@@ -132,7 +166,7 @@ plot(X_t, xlab = "Années", ylab = expression(X[t])) ; plot(Z_t, xlab = "Années
 
 
 # Découvrir les valeurs de p* et q*
-acf(Z_t); pacf(Z_t)
+acf(diff_X_t, main = ""); pacf(diff_X_t, main = "")
 
 # Test de validité
 
@@ -154,30 +188,35 @@ signif <- function(estim){
 ######
 
 
-# p = 0 et q = 1
-arima001 <- arima(Z_t,c(0,0,1))
-Qtests(arima001$residuals, 24, 1)
-signif(arima001)
+# p = 2 et q = 0
+arima011 <- arima(X_t,c(4,1,0))
+Qtests(arima011$residuals, 24, 1)
+signif(arima011)
+
+# p = 7 et q = 2
+arima712 <- arima(X_t,c(7,1,2))
+Qtests(arima712$residuals, 24, 1)
+signif(arima712)
 
 # p = 0 et q = 2
-arima002 <- arima(Z_t,c(0,0,2))
-Qtests(arima002$residuals, 24, 2)
-signif(arima002)
-ma2 <- arima002
+#arima002 <- arima(diff_X_t,c(0,0,2))
+#Qtests(arima002$residuals, 24, 2)
+#signif(arima002)
+#ma2 <- arima002
 
 # p = 1 et q = 1
-arima101 <- arima(Z_t,c(1,0,1))
+arima101 <- arima(diff_X_t,c(1,0,1))
 Qtests(arima101$residuals, 24, 2)
 signif(arima101)
 
 # p = 1 et q = 0
-arima100 <- arima(Z_t,c(1,0,0))
+arima100 <- arima(diff_X_t,c(1,0,0))
 Qtests(arima100$residuals, 24, 1)
 signif(arima100)
 ar1 <- arima100
 
 # p = 1 et q = 2
-arima102 <- arima(Z_t,c(1,0,2))
+arima102 <- arima(diff_X_t,c(1,0,2))
 Qtests(arima102$residuals, 24, 3)
 signif(arima102)                    
 
