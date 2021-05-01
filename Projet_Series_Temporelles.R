@@ -63,7 +63,7 @@ acf(Z_t, main = ""); pacf(Z_t, main = "")
 
 ##### A FAIRE ######
 # Il faudrait l'ACF et le PACF de Diff
-acf(diff_X_t, main = ""); pacf(diff_X_t, main = "")
+#acf(diff_X_t, main = ""); pacf(diff_X_t, main = "")
 # Au regard des graphiques, on a l'intuition que la série est différenciée semble stationnaire. On va vérifier cette supposition avec des tests.
 
 
@@ -107,14 +107,14 @@ adf
 
 # Testons maintenant la racine unitaire pour la série différenciée dspread. 
 diff_X_t <- diff(X_t,1)
-plot(diff_X_t)
+
 # La représentation graphique précédente semble montrer l’absence de constante et de tendance non nulle. Vérifions avec une régression :
 summary(lm(diff_X_t ~ dates[-1])) #sans la première date car on a différencié la série
 
 # La p-valeur est largement supérieure à 0.05.
 # donc on ne rejette pas le test de nullité du coefficient associé à dates dans la régression de la série différenciée sur les dates
 # CONCLUSION : Il y a bien ni constante ni tendance significative.
-
+data
 adf <- adfTest_valid(diff_X_t,24, type="nc")
 # On ajoute 7 retards dans le test ADF (test DF simple).
 adf
@@ -189,10 +189,10 @@ signif <- function(estim){
 ######
 
 
-# p = 2 et q = 0
-arima011 <- arima(X_t,c(19,1,0))
-Qtests(arima011$residuals, 24, 1)
-signif(arima011)
+# p = 19 et q = 0
+arima1910 <- arima(X_t,c(19,1,0))
+Qtests(arima1910$residuals, 24, 19)
+signif(arima1910)
 
 # p = 7 et q = 2
 arima712 <- arima(X_t,c(7,1,2))
@@ -231,45 +231,58 @@ apply(as.matrix(models),1, function(m) c("AIC"=AIC(get(m)), "BIC"=BIC(get(m))))
 # Q8 #
 ######
 
-prediction <- predict(arima011,2)
+prediction <- predict(arima1910,2)
 prediction
 
-#On r?cup?re le sigma? de notre bruit
+#On récupère le sigma de notre bruit
 
-var_prev_1 <- arima011$sigma2
-var_prev_2 <- arima011$sigma2*(1+(arima011$coef[1] + arima011$coef[2])**2)
+var_prev_1 <- arima1910$sigma2
+var_prev_1
+var_prev_2 <- arima1910$sigma2*(1+(arima1910$coef[1] + arima1910$coef[2])**2)
+var_prev_2
 
-arima011$sigma2
-  
-#Formule th?orique test
+#Formule théorique test
 Bound_sup <- rbind(prediction$pred[1] +1.96*sqrt(var_prev_1),prediction$pred[2] +1.96*sqrt(var_prev_2))
 Bound_inf <- rbind(prediction$pred[1] -1.96*sqrt(var_prev_1),prediction$pred[2] -1.96*sqrt(var_prev_2))
 
 #sigma2 nous donne : the MLE of the innovations variance.
 
-date_pred <- c(2019+3/12, 2019+4/12) 
+date_pred <- c(2019+04/12, 2019+05/12) 
 coef_reg <- lt$coefficients
-
+date_pred
+coef_reg[2]
 
 dev.off()
-plot(NULL,NULL,xlim=c(2010+11/12, 2019+3/12),ylim=c(50,150),
+plot(NULL,NULL,xlim=c(2017+11/12, 2019+05/12),ylim=c(100,240),
      xlab="Années",ylab=expression(X[t]))
-lines(X_t, type = "o", pch = 16)# les donn?es de base
+lines(X_t, type = "o", pch = 16)# les données de base
 
+Bound_inf[1] + coef_reg[2]*date_pred[1] + coef_reg[1]
+Bound_inf[2] + coef_reg[2]*date_pred[2] + coef_reg[1]
+
+c(Bound_inf[1] + coef_reg[2]*date_pred[1] + coef_reg[1], 
+            Bound_inf[2] + coef_reg[2]*date_pred[2] + coef_reg[1])
+rev(c(Bound_inf[1] + coef_reg[2]*date_pred[1] + coef_reg[1], 
+            Bound_inf[2] + coef_reg[2]*date_pred[2] + coef_reg[1]))
+c(X_t,prediction$pred + coef_reg[2]*(date_pred) + coef_reg[1])
+rev(date_pred)
 
 polygon(x=c(date_pred, rev(date_pred)),
-        y=c(c(exp(Bound_inf[1] + coef_reg[2]*date_pred[1] + coef_reg[1]), 
-            exp(Bound_inf[2] + coef_reg[2]*date_pred[2] + coef_reg[1])),
-            rev(c(exp(Bound_sup[1] + coef_reg[2]*date_pred[1] + coef_reg[1]), 
-                  exp(Bound_sup[2] + coef_reg[2]*date_pred[1] + coef_reg[1])))),col="grey",border=NA) #?a cr?e l'IC
-lines(c(X_t,exp(prediction$pred + coef_reg[2]*(date_pred) + coef_reg[1])) )
-points(date_pred, exp(prediction$pred + coef_reg[2]*(date_pred) + coef_reg[1]), col="red", pch=16) # predictions
+        y=c(c(Bound_inf[1] + coef_reg[2]*date_pred[1] + coef_reg[1], 
+            Bound_inf[2] + coef_reg[2]*date_pred[2] + coef_reg[1]),
+            rev(c(Bound_sup[1] + coef_reg[2]*date_pred[1] + coef_reg[1], 
+                  Bound_sup[2] + coef_reg[2]*date_pred[1] + coef_reg[1]))),col="grey",border=NA) #ça crée l'IC
+lines(c(X_t,prediction$pred + coef_reg[2]*(date_pred) + coef_reg[1]))
+points(date_pred, prediction$pred + coef_reg[2]*(date_pred) + coef_reg[1], col="red", pch=16) # predictions
+
+
+prediction$pred + coef_reg[2]*(date_pred) + coef_reg[1]
 
 # Anexe
 
 dev.off()
 par(mfrow = c(1,2))
-plot(X_t, xlab = "Ann?es", ylab = expression(X[t])); acf(X_t, main = "")
-plot(W_t, xlab = "Ann?es", ylab = expression(W[t])); acf(W_t, main = "")
-plot(Z_t, xlab = "Ann?es", ylab = expression(Z[t])); acf(Z_t, main = "")
+plot(X_t, xlab = "Années", ylab = expression(X[t])); acf(X_t, main = "")
+plot(W_t, xlab = "Années", ylab = expression(W[t])); acf(W_t, main = "")
+plot(Z_t, xlab = "Années", ylab = expression(Z[t])); acf(Z_t, main = "")
 
