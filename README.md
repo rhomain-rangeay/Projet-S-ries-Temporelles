@@ -1,4 +1,4 @@
-# Projet-Séries-Temporelles
+# Projet Séries Temporelles
 ### Romain Lefranc
 ### Maxime Denizan
 
