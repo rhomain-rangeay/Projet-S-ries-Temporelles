@@ -9,11 +9,11 @@
 
 # Importation des données
 
-# Path Romain
-#setwd("/Users/Romain/Documents/Romain/ENSAE 2A 2020-2021/S2/Series temporelles/Projet de series temporelles")
-# Path Maxime
-setwd("/Users/maximedenizan/Documents/GitHub/Projet-Series-Temporelles")
+path_romain <- "/Users/Romain/Documents/Romain/ENSAE 2A 2020-2021/S2/Series temporelles/Projet de series temporelles"
+#path_maxime <- 
 
+setwd(path_romain)
+#setwd(path_maxime)
 
 getwd()
 datafile <- "valeurs_mensuelles.csv"
@@ -32,11 +32,9 @@ typeof(dates_char) # character
 dates_char[1];dates_char[length(dates_char)]
 dates <- as.yearmon(seq(from=2011+1/12,to=2019+2/12,by=1/12))
 
-dates
-
 X_t <- zoo(data$Indice,order.by=dates)
+typeof(data$X_t)
 typeof(X_t)
-
 
 # plot de la série
 # chercher une tendance ou saisonalité
@@ -49,9 +47,7 @@ W_t = log(X_t)
 plot(W_t, xlab = "Années", ylab = "Logarithme de l'indice") 
 acf(W_t, main = "")
 
-# plot des différences premières 
-dX_t <- diff(X_t, 1)
-plot(cbind(X_t,dX_t))
+
 
 ######
 # Q2 #
@@ -104,7 +100,7 @@ adf <- adfTest_valid(W_t,24,"ct")
 # Il a fallu considérer 9 retards au test ADF pour supprimer l’autocorrélation des résidus.
 adf
 
-dspread <- diff(X_t,1)
+dspread <- diff(W_t,1)
 plot(dspread)
 
 adf <- adfTest_valid(dspread,24, type="nc")
