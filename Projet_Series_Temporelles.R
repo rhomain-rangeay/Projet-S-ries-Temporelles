@@ -30,7 +30,8 @@ typeof(data$Dates) # integer
 dates_char <- as.character(data$Dates)
 typeof(dates_char) # character
 dates_char[1];dates_char[length(dates_char)]
-dates <- as.yearmon(seq(from=2011+1/12,to=2019+2/12,by=1/12))
+dates <- as.yearmon(seq(from=2010+11/12,to=2019+3/12,by=1/12))
+
 
 X_t <- zoo(data$Indice,order.by=dates)
 typeof(data$X_t)
@@ -189,7 +190,7 @@ signif <- function(estim){
 
 
 # p = 2 et q = 0
-arima011 <- arima(X_t,c(4,1,0))
+arima011 <- arima(X_t,c(19,1,0))
 Qtests(arima011$residuals, 24, 1)
 signif(arima011)
 
@@ -230,15 +231,15 @@ apply(as.matrix(models),1, function(m) c("AIC"=AIC(get(m)), "BIC"=BIC(get(m))))
 # Q8 #
 ######
 
-prediction <- predict(ma2,2)
+prediction <- predict(arima011,2)
 prediction
 
 #On r?cup?re le sigma? de notre bruit
 
-var_prev_1 <- ma2$sigma2
-var_prev_2 <- ma2$sigma2*(1+(ma2$coef[1] + ma2$coef[2])**2)
+var_prev_1 <- arima011$sigma2
+var_prev_2 <- arima011$sigma2*(1+(arima011$coef[1] + arima011$coef[2])**2)
 
-ma2$sigma2
+arima011$sigma2
   
 #Formule th?orique test
 Bound_sup <- rbind(prediction$pred[1] +1.96*sqrt(var_prev_1),prediction$pred[2] +1.96*sqrt(var_prev_2))
@@ -246,13 +247,13 @@ Bound_inf <- rbind(prediction$pred[1] -1.96*sqrt(var_prev_1),prediction$pred[2] 
 
 #sigma2 nous donne : the MLE of the innovations variance.
 
-date_pred <- c(2013+9/12, 2013+10/12) 
+date_pred <- c(2019+3/12, 2019+4/12) 
 coef_reg <- lt$coefficients
 
 
 dev.off()
-plot(NULL,NULL,xlim=c(2011+7/12, 2013+10/12),ylim=c(400,800),
-     xlab="Ann?es",ylab=expression(X[t]))
+plot(NULL,NULL,xlim=c(2010+11/12, 2019+3/12),ylim=c(50,150),
+     xlab="Années",ylab=expression(X[t]))
 lines(X_t, type = "o", pch = 16)# les donn?es de base
 
 
