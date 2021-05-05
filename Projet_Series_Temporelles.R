@@ -9,11 +9,11 @@
 
 # Importation des données
 
-#path_romain <- "/Users/Romain/Documents/Romain/ENSAE 2A 2020-2021/S2/Series temporelles/Projet de series temporelles"
-path_maxime <- " /Users/maximedenizan/Documents/GitHub/Projet de series temporelles "
+path_romain <- "/Users/Romain/Documents/Romain/ENSAE 2A 2020-2021/S2/Series temporelles/Projet de series temporelles"
+#path_maxime <- " /Users/maximedenizan/Documents/GitHub/Projet de series temporelles "
 
-#setwd(path_romain)
-setwd(path_maxime)
+setwd(path_romain)
+#setwd(path_maxime)
 
 getwd()
 datafile <- "valeurs_mensuelles.csv"
@@ -59,6 +59,7 @@ summary(lt)
 # résidus de la régression du logarithme de la série sur les dates
 # série corigée
 Z_t <- lt$residuals
+par(mfrow = c(1,2))
 acf(Z_t, main = ""); pacf(Z_t, main = "")
 
 ##### A FAIRE ######
@@ -80,6 +81,9 @@ Qtests <- function(series, k, fitdf=0) {
   })
   return(t(pvals))
 }
+
+###### À VÉRIFIER ######
+# LA FONCTION QTEST ET SON RÔLE
 
 Qtests(adf@test$lm$residuals, 24,length(adf@test$lm$coefficients))
 
@@ -107,8 +111,10 @@ adf
 
 # Testons maintenant la racine unitaire pour la série différenciée dspread. 
 diff_X_t <- diff(X_t,1)
+plot(diff_X_t)
 
 # La représentation graphique précédente semble montrer l’absence de constante et de tendance non nulle. Vérifions avec une régression :
+
 summary(lm(diff_X_t ~ dates[-1])) #sans la première date car on a différencié la série
 
 # La p-valeur est largement supérieure à 0.05.
@@ -116,7 +122,7 @@ summary(lm(diff_X_t ~ dates[-1])) #sans la première date car on a différencié
 # CONCLUSION : Il y a bien ni constante ni tendance significative.
 data
 adf <- adfTest_valid(diff_X_t,24, type="nc")
-# On ajoute 7 retards dans le test ADF (test DF simple).
+# On ajoute 6 retards dans le test ADF (test DF simple) pour qu'il soit valide.
 adf
 
 # Le test rejette la racine unitaire (p-value<0.05), on dira donc que la série différenciée est ”stationnaire”. 
@@ -124,7 +130,7 @@ adf
 
 # Test de Phillips-Perron
 pp.test(diff_X_t)
-
+# Cet autre test confirme la stationnarité de la série différenciée.
 
 ######
 # Q3 #
@@ -135,9 +141,15 @@ pp.test(diff_X_t)
 par(mfrow = c(1,2))
 plot(X_t, xlab = "Années", ylab = expression(X[t])) ; plot(diff_X_t, xlab = "Années", ylab = expression(Delta*X[t]))
 
-#####
+################################################################################################################################
+##############################################################################################################################
+##############
 # Q4 follasse #
-#####
+###############
+
+
+
+
 mat <- matrix(NA,nrow=19+1,ncol=3+1) #matrice vide à remplir
 rownames(mat) <- paste0("p=",0:19) #renomme les lignes
 colnames(mat) <- paste0("q=",0:3) #renomme les colonnes
@@ -161,6 +173,9 @@ BICs #affiche les BICs
 #L'ARIMA (0,1,1) minimise l'AIC
 
 
+##############################################################################################################################
+##############################################################################################################################
+
 ######
 # Q4 #
 ######
@@ -169,12 +184,14 @@ BICs #affiche les BICs
 # Découvrir les valeurs de p* et q*
 acf(diff_X_t, main = ""); pacf(diff_X_t, main = "")
 
-# Test de validité
+# Les sous-modèles possibles sont les ARIMA(p,d,q) tels que p <= p*, d <= d*, q <= q*.
+# Dans l’absolu, on cherche un modèle :
+# — bien ajusté : les coefficients estimés (notamment les coefficients des ordres AR et MA les plus élevés) sont statistiquement significatifs
+# — valide : les résidus ne sont pas autocorrélés
 
 # fonction Qtests déjà fait
 
-# Test de nullité des coefficients
-
+# Fonction de test des significativités individuelles des coefficients
 signif <- function(estim){
   coef <- estim$coef
   se <- sqrt(diag(estim$var.coef))
@@ -183,7 +200,61 @@ signif <- function(estim){
   return(rbind(coef,se,pval))
 }
 
+# Fonction pour estimer un arima et en vérifier l’ajustement et la validité
+modelchoice <- function(p,q,data=diff_X_t, k=24) {
+  estim <- try(arima(data, c(p,0,q),optim.control=list(maxit=20000)))
+  if (class(estim)=="try-error") return(c("p"=p,"q"=q,"arsignif"=NA,"masignif"=NA,"resnocorr"=NA, "ok"=NA))
+  arsignif <- if (p==0) NA else signif(estim)[3,p]<=0.05
+  masignif <- if (q==0) NA else signif(estim)[3,p+q]<=0.05
+  resnocorr <- sum(Qtests(estim$residuals,24,length(estim$coef)-1)[,2]<=0.05,na.rm=T)==0
+  checks <- c(arsignif,masignif,resnocorr)
+  ok <- as.numeric(sum(checks,na.rm=T)==(3-sum(is.na(checks))))
+  return(c("p"=p,"q"=q,"arsignif"=arsignif,"masignif"=masignif,"resnocorr"=resnocorr,"ok"=ok))
+  }
 
+# On choisira p <= 3 et q <= 20.
+pmax = 3
+qmax = 20
+
+# Fonction pour estimer et vérifier tous les arima(p,q) avec p<=pmax et q<=max
+armamodelchoice <- function(pmax,qmax) {
+  pqs <- expand.grid(0:pmax,0:qmax) 
+  t(apply(matrix(1:dim(pqs)[1]),1,function(row) {
+    p <- pqs[row,1]; q <- pqs[row,2]
+    cat(paste0("Computing ARMA(",p,",",q,") nn"))
+    modelchoice(p,q)}))
+  }
+
+armamodels <- armamodelchoice(pmax,qmax) # estime tous les arima (patienter...)
+selec <- armamodels[armamodels[,"ok"]==1&!is.na(armamodels[,"ok"]),] #modèles bien ajustés et valides
+selec
+
+# Commentaire : On a 11 modèles bien ajustés et valides.
+
+# On crée une liste des ordres p et q des modèles candidats
+pqs <- apply(selec,1,function(row) list("p"=as.numeric(row[1]),"q"=as.numeric(row[2]))) 
+
+# On renomme les éléments de la liste
+names(pqs) <- paste0("arma(",selec[,1],",",selec[,2],")") 
+
+# On crée une liste des modèles
+models <- lapply(pqs, function(pq) arima(diff_X_t,c(pq[["p"]],0,pq[["q"]]))) 
+vapply(models, FUN.VALUE=numeric(2), function(m) c("AIC"=AIC(m),"BIC"=BIC(m))) #calcule les AIC et BIC des modèles candidats
+
+# L'ARIMA (0,1,18) minimise l'AIC 
+arima0118 <- arima(X_t,c(0,1,18))
+Qtests(arima0118$residuals, 24)
+signif(arima0118)
+
+# L'ARIMA (0,1,1) minimise le BIC
+arima011 <- arima(X_t,c(0,1,1))
+Qtests(arima011$residuals, 1)
+signif(arima011)
+
+##############################################################################################################
+############################################################################################################
+#################################### NUL NUL NUL ###############################################################
+############################################################################################################
 ######
 # Q5 #
 ######
@@ -226,46 +297,39 @@ signif(arima102)
 models <- c("ma2", "ar1"); names(models) <- models
 apply(as.matrix(models),1, function(m) c("AIC"=AIC(get(m)), "BIC"=BIC(get(m))))
 
+#####################################################################################################################
+#####################################################################################################################
+#####################################################################################################################
 
 ######
 # Q8 #
 ######
 
-prediction <- predict(arima1910,2)
+prediction <- predict(arima011,2)
 prediction
 
 #On récupère le sigma de notre bruit
 
-var_prev_1 <- arima1910$sigma2
+var_prev_1 <- arima011$sigma2
 var_prev_1
-var_prev_2 <- arima1910$sigma2*(1+(arima1910$coef[1] + arima1910$coef[2])**2)
+var_prev_2 <- arima011$sigma2*(1+(arima011$coef[1])**2)
 var_prev_2
+
 
 #Formule théorique test
 Bound_sup <- rbind(prediction$pred[1] +1.96*sqrt(var_prev_1),prediction$pred[2] +1.96*sqrt(var_prev_2))
 Bound_inf <- rbind(prediction$pred[1] -1.96*sqrt(var_prev_1),prediction$pred[2] -1.96*sqrt(var_prev_2))
-
+prediction$pred[2]
 #sigma2 nous donne : the MLE of the innovations variance.
 
 date_pred <- c(2019+04/12, 2019+05/12) 
-coef_reg <- lt$coefficients
-date_pred
-coef_reg[2]
+regression_diff_X_t <- lm(diff_X_t ~ dates[-1])
+coef_reg <- regression_diff_X_t$coefficients
 
 dev.off()
-plot(NULL,NULL,xlim=c(2017+11/12, 2019+05/12),ylim=c(100,240),
+plot(NULL,NULL,xlim=c(2017+11/12, 2019+05/12),ylim=c(100,130),
      xlab="Années",ylab=expression(X[t]))
 lines(X_t, type = "o", pch = 16)# les données de base
-
-Bound_inf[1] + coef_reg[2]*date_pred[1] + coef_reg[1]
-Bound_inf[2] + coef_reg[2]*date_pred[2] + coef_reg[1]
-
-c(Bound_inf[1] + coef_reg[2]*date_pred[1] + coef_reg[1], 
-            Bound_inf[2] + coef_reg[2]*date_pred[2] + coef_reg[1])
-rev(c(Bound_inf[1] + coef_reg[2]*date_pred[1] + coef_reg[1], 
-            Bound_inf[2] + coef_reg[2]*date_pred[2] + coef_reg[1]))
-c(X_t,prediction$pred + coef_reg[2]*(date_pred) + coef_reg[1])
-rev(date_pred)
 
 polygon(x=c(date_pred, rev(date_pred)),
         y=c(c(Bound_inf[1] + coef_reg[2]*date_pred[1] + coef_reg[1], 
@@ -275,14 +339,10 @@ polygon(x=c(date_pred, rev(date_pred)),
 lines(c(X_t,prediction$pred + coef_reg[2]*(date_pred) + coef_reg[1]))
 points(date_pred, prediction$pred + coef_reg[2]*(date_pred) + coef_reg[1], col="red", pch=16) # predictions
 
-
-prediction$pred + coef_reg[2]*(date_pred) + coef_reg[1]
-
-# Anexe
+# Annexe
 
 dev.off()
 par(mfrow = c(1,2))
 plot(X_t, xlab = "Années", ylab = expression(X[t])); acf(X_t, main = "")
 plot(W_t, xlab = "Années", ylab = expression(W[t])); acf(W_t, main = "")
 plot(Z_t, xlab = "Années", ylab = expression(Z[t])); acf(Z_t, main = "")
-
