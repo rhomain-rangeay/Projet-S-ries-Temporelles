@@ -9,11 +9,11 @@
 
 # Importation des données
 
-path_romain <- "/Users/Romain/Documents/Romain/ENSAE 2A 2020-2021/S2/Series temporelles/Projet de series temporelles"
-#path_maxime <- " /Users/maximedenizan/Documents/GitHub/Series temporelles/Projet de series temporelles "
+#path_romain <- "/Users/Romain/Documents/Romain/ENSAE 2A 2020-2021/S2/Series temporelles/Projet de series temporelles"
+path_maxime <- " /Users/maximedenizan/Documents/GitHub/Projet de series temporelles "
 
-setwd(path_romain)
-#setwd(path_maxime)
+#setwd(path_romain)
+setwd(path_maxime)
 
 getwd()
 datafile <- "valeurs_mensuelles.csv"
