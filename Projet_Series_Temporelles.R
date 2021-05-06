@@ -9,11 +9,11 @@
 
 # Importation des données
 
-path_romain <- "/Users/Romain/Documents/Romain/ENSAE 2A 2020-2021/S2/Series temporelles/Projet de series temporelles"
-#path_maxime <- " /Users/maximedenizan/Documents/GitHub/Projet de series temporelles "
+#path_romain <- "/Users/Romain/Documents/Romain/ENSAE 2A 2020-2021/S2/Series temporelles/Projet de series temporelles"
+path_maxime <- " /Users/maximedenizan/Documents/GitHub/Projet de series temporelles "
 
-setwd(path_romain)
-#setwd(path_maxime)
+#setwd(path_romain)
+setwd(path_maxime)
 
 getwd()
 datafile <- "valeurs_mensuelles.csv"
@@ -243,13 +243,16 @@ vapply(models, FUN.VALUE=numeric(2), function(m) c("AIC"=AIC(m),"BIC"=BIC(m))) #
 
 # L'ARIMA (0,1,18) minimise l'AIC 
 arima0118 <- arima(X_t,c(0,1,18))
-Qtests(arima0118$residuals, 24)
+Qtests(arima0118$residuals, 24, 18)
 signif(arima0118)
+
 
 # L'ARIMA (0,1,1) minimise le BIC
 arima011 <- arima(X_t,c(0,1,1))
 Qtests(arima011$residuals, 1)
 signif(arima011)
+
+arima011
 
 ##############################################################################################################
 ############################################################################################################
