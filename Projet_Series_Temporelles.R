@@ -40,7 +40,7 @@ X_t <- zoo(data$Indice,order.by=dates)
 # Idée : chercher une tendance ou saisonalité au premier regard
 dev.off()
 par(mfrow = c(1,2))
-plot(X_t, xlab = "Années", ylab = expression(X[t])) 
+plot(X_t, xlab = "Années", ylab = "Indice de la production industrielle") 
 acf(X_t, main = "")
 
 ######
@@ -52,10 +52,13 @@ acf(X_t, main = "")
 lt <- lm(X_t ~ dates) # régression de la série sur les dates
 summary(lt)
 
-# Résidus de la régression de la série X_t sur les dates
-residus <- lt$residuals
+# Résidus de la régression de la série X_t sur les dates, puis affichage des corrélations totales et partielles
+Z_t <- lt$residuals
+acf(Z_t, main = ""); pacf(Z_t, main = "")
 
-# Test racine unitaire sur la série : test de Dickey-Fuller augmenté
+
+
+# Test racine unitaire sur la série : test de Dickey-Fuller augmenté avec constante et tendance
 adf <- adfTest(X_t, lag=0, type="ct")
 adf
 
@@ -96,7 +99,9 @@ diff_X_t <- diff(X_t,1) # Série différenciée
 
 
 # Testons maintenant la racine unitaire pour la série différenciée diff_X_t dont la stationarité semble relativement plus probable. 
-plot(diff_X_t)
+par(mfrow = c(1,2))
+plot(diff_X_t, xlab = "Années", ylab = expression(Delta*X[t])) 
+acf(diff_X_t, main = "")
 
 # La représentation graphique de la série différenciée précédente semble d'abord montrer l’absence de constante et de tendance non nulle.
 # Vérifions avec une régression :
@@ -110,9 +115,6 @@ adf <- adfTest_valid(diff_X_t,24, type="nc")
 adf
 # Le test rejette la racine unitaire (p-value<0.05), on dira donc que la série différenciée est ”stationnaire”. 
 # diff_X_t est donc I(1).
-
-# Test de Phillips-Peron
-pp.test(diff_X_t)
 
 ######
 # Q3 #
@@ -169,7 +171,7 @@ armamodelchoice <- function(pmax,qmax) {
 pmax = 3
 qmax = 20
 
-armamodels <- armamodelchoice(pmax,qmax) # estime tous les arima (patienter...)
+armamodels <- armamodelchoice(pmax,qmax) # estime tous les arima 
 selec <- armamodels[armamodels[,"ok"]==1&!is.na(armamodels[,"ok"]),] #modèles bien ajustés et valides
 selec
 
@@ -227,3 +229,16 @@ polygon(x=c(date_pred, rev(date_pred)),
                   Bound_sup[2] + coef_reg[2]*date_pred[1] + coef_reg[1]))),col="grey",border=NA) #ça crée l'IC
 lines(c(X_t,prediction$pred + coef_reg[2]*(date_pred) + coef_reg[1]))
 points(date_pred, prediction$pred + coef_reg[2]*(date_pred) + coef_reg[1], col="red", pch=16) # predictions
+
+
+
+
+
+# Annexe
+dev.off()
+par(mfrow = c(1,2))
+plot(X_t, xlab = "Années", ylab = expression(X[t])); acf(X_t, main = "")
+plot(Z_t, xlab = "Années", ylab = expression(Z[t])); acf(Z_t, main = "")
+plot(diff_X_t, xlab = "Années", ylab = expression(Delta*X[t])); acf(diff_X_t, main = "")
+
+
