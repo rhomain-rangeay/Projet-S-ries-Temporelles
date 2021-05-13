@@ -9,7 +9,6 @@
 
 
 # Importation des données et préparation de l'espace de travail
-
 path_romain <- "/Users/Romain/Documents/Romain/ENSAE 2A 2020-2021/S2/Series temporelles/Projet de series temporelles"
 #path_maxime <- " /Users/maximedenizan/Documents/GitHub/Projet de series temporelles "
 setwd(path_romain)
@@ -18,7 +17,6 @@ setwd(path_romain)
 getwd()
 datafile <- "valeurs_mensuelles.csv"
 data <- read.csv(datafile, sep=";")
-
 data
 
 # Packages séries temporelles
@@ -32,12 +30,10 @@ dates_char <- as.character(data$Dates)
 typeof(dates_char) # character
 dates_char[1];dates_char[length(dates_char)]
 dates <- as.yearmon(seq(from=2010+11/12,to=2019+3/12,by=1/12))
-
 X_t <- zoo(data$Indice,order.by=dates)
 
 
-# Plot de la série X_t et de la série différenciée diff_X_t
-# Idée : chercher une tendance ou saisonalité au premier regard
+# Plot de la série X_t et de son autocorrélogramme pour repérer une tendance ou une saisonnalité au premier regard
 dev.off()
 par(mfrow = c(1,2))
 plot(X_t, xlab = "Années", ylab = "Indice de la production industrielle") 
@@ -48,15 +44,13 @@ acf(X_t, main = "")
 ######
 
 
-# Correction de la tendance ?
+# Correction de la tendance
 lt <- lm(X_t ~ dates) # régression de la série sur les dates
 summary(lt)
 
 # Résidus de la régression de la série X_t sur les dates, puis affichage des corrélations totales et partielles
 Z_t <- lt$residuals
 acf(Z_t, main = ""); pacf(Z_t, main = "")
-
-
 
 # Test racine unitaire sur la série : test de Dickey-Fuller augmenté avec constante et tendance
 adf <- adfTest(X_t, lag=0, type="ct")
@@ -94,9 +88,9 @@ adf <- adfTest_valid(X_t,24,"ct")
 adf
 # La racine unitaire n’est pas rejetée à un seuil de 95% pour la série en niveau, la série est donc au moins I(1) (intégrée d'ordre 1). 
 
-# Étude de la série différenciée
-diff_X_t <- diff(X_t,1) # Série différenciée
 
+###### Étude de la série différenciée ######
+diff_X_t <- diff(X_t,1) # Série différenciée
 
 # Testons maintenant la racine unitaire pour la série différenciée diff_X_t dont la stationarité semble relativement plus probable. 
 par(mfrow = c(1,2))
@@ -171,10 +165,10 @@ armamodelchoice <- function(pmax,qmax) {
 pmax = 3
 qmax = 20
 
+# On teste les différents modèles au regard des pmax et qmax identifiés
 armamodels <- armamodelchoice(pmax,qmax) # estime tous les arima 
 selec <- armamodels[armamodels[,"ok"]==1&!is.na(armamodels[,"ok"]),] #modèles bien ajustés et valides
 selec
-
 # Commentaire : On a 11 modèles bien ajustés et valides .
 
 # On crée une liste des ordres p et q des modèles candidats
@@ -201,8 +195,7 @@ prediction <- predict(arima011,2)
 prediction
 
 #On récupère le sigma de notre bruit
-
-var_prev_1 <- arima011$sigma2
+var_prev_1 <- arima011$sigma2 #sigma2 nous donne : la variance du bruit d'innovation.
 var_prev_1
 var_prev_2 <- arima011$sigma2*(1+(1-arima011$coef[1])**2)
 var_prev_2
@@ -210,13 +203,12 @@ var_prev_2
 #Formule théorique test
 Bound_sup <- rbind(prediction$pred[1] +1.96*sqrt(var_prev_1),prediction$pred[2] +1.96*sqrt(var_prev_2))
 Bound_inf <- rbind(prediction$pred[1] -1.96*sqrt(var_prev_1),prediction$pred[2] -1.96*sqrt(var_prev_2))
-prediction$pred[2]
-#sigma2 nous donne : the MLE of the innovations variance.
 
 date_pred <- c(2019+04/12, 2019+05/12) 
 regression_diff_X_t <- lm(diff_X_t ~ dates[-1])
 coef_reg <- regression_diff_X_t$coefficients
 
+# Affichage des prévisions ainsi que l'intervalle de confiance à 95%
 dev.off()
 plot(NULL,NULL,xlim=c(2017+11/12, 2019+05/12),ylim=c(100,130),
      xlab="Années",ylab=expression(X[t]))
@@ -231,10 +223,7 @@ lines(c(X_t,prediction$pred + coef_reg[2]*(date_pred) + coef_reg[1]))
 points(date_pred, prediction$pred + coef_reg[2]*(date_pred) + coef_reg[1], col="red", pch=16) # predictions
 
 
-
-
-
-# Annexe
+# Annexes
 dev.off()
 par(mfrow = c(1,2))
 plot(X_t, xlab = "Années", ylab = expression(X[t])); acf(X_t, main = "")
